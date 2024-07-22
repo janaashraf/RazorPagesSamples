@@ -1,34 +1,31 @@
 using FluentMigrator.Runner;
-using RazorFluentMigratorSample.Migrations;
-
+using Samples.Migrations;
+using SD.LLBLGen.Pro.DQE.PostgreSql;
+using SD.LLBLGen.Pro.ORMSupportClasses;
+using System.Diagnostics;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
-
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddFluentMigratorCore()
   .ConfigureRunner(rb => rb
   .AddPostgres()
   .WithGlobalConnectionString(builder.Configuration.GetConnectionString("DefaultConnection"))
-  .ScanIn(typeof(CreateUserTable).Assembly).For.Migrations())
+  .ScanIn(typeof(CreateInitialTables).Assembly).For.Migrations())
   .AddLogging(lb => lb.AddFluentMigratorConsole());
+// Configure LLBLGen runtime
+RuntimeConfiguration.ConfigureDQE<PostgreSqlDQEConfiguration>(
+    c => c.SetTraceLevel(TraceLevel.Verbose)
+          .AddDbProviderFactory(typeof(Npgsql.NpgsqlFactory))
+);
+RuntimeConfiguration.AddConnectionString("DefaultConnection", connectionString);
 
 var app = builder.Build();
-// Run the migrations
-using (var scope = app.Services.CreateScope())
-{
-    var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
-    runner.MigrateUp();
-}
-
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseAuthorization();
-
 app.MapRazorPages();
-
 app.Run();
